@@ -1,13 +1,13 @@
 package noizu.liquibase.postgres.enums;
 
 import liquibase.database.Database;
-        import liquibase.database.jvm.JdbcConnection;
-        import liquibase.exception.RollbackImpossibleException;
-        import noizu.liquibase.postgres.EnumChange;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.exception.CustomChangeException;
+import liquibase.exception.RollbackImpossibleException;
+import noizu.liquibase.postgres.EnumChange;
 
-        import java.sql.SQLException;
-        import java.sql.Statement;
-        import java.util.Arrays;
+import java.sql.Statement;
+import java.util.Arrays;
 
 public class CreateOperation extends EnumChange {
     private String values;
@@ -17,14 +17,16 @@ public class CreateOperation extends EnumChange {
     }
 
     @Override
-    public void execute(Database database) {
+    public void execute(Database database) throws CustomChangeException {
         JdbcConnection conn = (JdbcConnection) database.getConnection();
 
         String[] enumValues = this.values.split(",");
-        for (String value : enumValues) {
+        for (int i = 0; i < enumValues.length; i++) {
+            String value = enumValues[i].trim();
             if (!value.matches("[a-zA-Z0-9_]+")) {
-                throw new IllegalArgumentException("Invalid enum value: " + value);
+                throw new CustomChangeException("Invalid enum value: " + value);
             }
+            enumValues[i] = "'" + value + "'";
         }
 
         String enumValuesStr = String.join(",", Arrays.asList(enumValues));
@@ -36,20 +38,20 @@ public class CreateOperation extends EnumChange {
 
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to create enum type", e);
+        } catch (Exception e) {
+            throw new CustomChangeException("Failed to create enum type: [" + sql + "]", e);
         }
     }
 
     @Override
-    public void rollback(Database database) throws RollbackImpossibleException {
+    public void rollback(Database database) throws CustomChangeException, RollbackImpossibleException  {
         JdbcConnection conn = (JdbcConnection) database.getConnection();
         String sql = "DROP TYPE " + this.enumName + ";";
 
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to rollback enum type creation", e);
+        } catch (Exception e) {
+            throw new CustomChangeException("Failed to rollback enum type creation", e);
         }
     }
 }
