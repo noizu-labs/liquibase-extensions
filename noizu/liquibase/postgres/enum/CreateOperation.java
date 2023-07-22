@@ -1,4 +1,4 @@
-package noizu.liquibase.postgres.enum;
+package noizu.liquibase.postgres.enums;
 
 import liquibase.database.Database;
         import liquibase.database.jvm.JdbcConnection;
